@@ -1,0 +1,7 @@
+{
+  "name": "controle-financas-invoice-web-assets",
+  "private": true,
+  "dependencies": {
+    "chart.js": "4.5.1"
+  }
+}

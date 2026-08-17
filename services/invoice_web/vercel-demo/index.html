@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Demonstração estática do painel Fatura Local com dados fictícios.">
+    <title>Fatura Local — Demonstração</title>
+    <style>
+      :root {
+        --ink: #17211b;
+        --muted: #667068;
+        --paper: #f6f3ec;
+        --card: #fffefa;
+        --line: #dedbd1;
+        --green: #235943;
+        --green-2: #62a675;
+        --lime: #d9ef9f;
+        --orange: #dd7f50;
+        --blue: #608dac;
+        --purple: #8a77aa;
+        --danger: #b64f45;
+        --shadow: 0 18px 50px rgba(23, 33, 27, .08);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: var(--ink);
+        background: var(--paper);
+      }
+
+      * { box-sizing: border-box; }
+      body { margin: 0; min-width: 320px; background: radial-gradient(circle at 80% 0, #eef4df 0, transparent 28rem), var(--paper); }
+      button, input, select { font: inherit; }
+      button, select { cursor: pointer; }
+      button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid rgba(35, 89, 67, .25); outline-offset: 2px; }
+      h1, h2, h3, h4, p { margin-top: 0; }
+      h1, h2, h3, h4 { letter-spacing: -.03em; }
+      .topbar { min-height: 70px; padding: 12px max(24px, calc((100vw - 1240px) / 2)); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(23, 33, 27, .1); background: rgba(246, 243, 236, .88); backdrop-filter: blur(14px); position: sticky; top: 0; z-index: 20; }
+      .brand { display: flex; gap: 11px; align-items: center; color: inherit; text-decoration: none; }
+      .brand > b { width: 39px; height: 39px; display: grid; place-items: center; color: white; background: var(--green); border-radius: 12px; }
+      .brand span { display: grid; font-weight: 750; line-height: 1.05; }
+      .brand small { color: var(--muted); font-size: .68rem; font-weight: 600; margin-top: 4px; }
+      .demo-pill, .status { display: inline-flex; align-items: center; border-radius: 999px; font-size: .74rem; font-weight: 750; }
+      .demo-pill { gap: 7px; padding: 8px 12px; color: #513800; background: #fff0b8; border: 1px solid #ead185; }
+      .demo-pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #d09313; }
+      main { width: min(1240px, calc(100% - 36px)); margin: 0 auto; }
+      section { padding: 74px 0; border-bottom: 1px solid var(--line); }
+      .demo-banner { margin-top: 28px; padding: 14px 18px; display: flex; gap: 12px; align-items: center; border: 1px solid #ead185; border-radius: 14px; background: #fff8dc; color: #60480d; }
+      .demo-banner b { flex: 0 0 auto; }
+      .demo-banner p { margin: 0; font-size: .9rem; }
+      .hero { display: grid; grid-template-columns: 1.1fr .9fr; gap: 70px; align-items: center; min-height: 610px; }
+      .eyebrow { color: var(--green); font-size: .72rem; font-weight: 850; letter-spacing: .15em; text-transform: uppercase; }
+      .intro h1 { margin-bottom: 24px; font-size: clamp(2.8rem, 6vw, 5.4rem); line-height: .94; }
+      .intro h1 em { color: var(--green); font-family: Georgia, serif; font-weight: 500; }
+      .intro > p:not(.eyebrow) { max-width: 630px; color: var(--muted); font-size: 1.08rem; line-height: 1.7; }
+      .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+      .chips span { padding: 8px 12px; border: 1px solid var(--line); border-radius: 999px; background: rgba(255,255,255,.5); font-size: .78rem; font-weight: 700; }
+      .panel, .upload-card, .finance-form, .balance-results, .chart-panel, .invoice-card { border: 1px solid var(--line); border-radius: 22px; background: var(--card); box-shadow: var(--shadow); }
+      .upload-card { padding: 26px; }
+      .card-title, .section-title, .panel-heading, .breakdown-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+      .card-title small, .card-title > span { color: var(--muted); font-size: .72rem; font-weight: 700; }
+      .card-title h2 { margin: 3px 0 0; }
+      .drop-zone { width: 100%; margin: 22px 0; padding: 36px 20px; display: grid; place-items: center; gap: 4px; border: 1.5px dashed #a9b6a8; border-radius: 18px; color: var(--ink); background: #f5f8ee; }
+      .drop-zone:hover { border-color: var(--green); background: #eff6df; }
+      .drop-zone b { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; color: white; background: var(--green); font-size: 1.4rem; }
+      .drop-zone small { color: var(--muted); }
+      .field { display: grid; gap: 7px; margin: 14px 0; }
+      .field > span, .compact-field > span { font-size: .76rem; font-weight: 750; color: #3d473f; }
+      .field small { color: var(--muted); font-size: .72rem; line-height: 1.45; }
+      input, select { width: 100%; min-height: 43px; padding: 10px 12px; border: 1px solid #d2d3ca; border-radius: 10px; color: var(--ink); background: white; }
+      .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .primary, .dark, .secondary, .text-action { border: 0; border-radius: 10px; font-weight: 800; }
+      .primary, .dark { min-height: 44px; padding: 11px 17px; }
+      .primary { color: white; background: var(--green); }
+      .dark { color: white; background: var(--ink); }
+      .secondary { padding: 9px 13px; border: 1px solid var(--line); color: var(--ink); background: #fff; }
+      .text-action { padding: 8px; color: var(--green); background: transparent; }
+      .primary:hover, .dark:hover { filter: brightness(1.08); }
+      .note, .financial-note, .form-note, .table-footnote { color: var(--muted); font-size: .78rem; line-height: 1.55; }
+      .upload-card .primary { width: 100%; }
+      .section-title { margin-bottom: 27px; align-items: flex-end; }
+      .section-title h2 { margin: 3px 0 0; font-size: clamp(2rem, 4vw, 3.4rem); }
+      .section-title > p { max-width: 390px; margin: 0; color: var(--muted); text-align: right; }
+      .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 22px; }
+      .stats article { min-height: 135px; padding: 20px; display: grid; align-content: space-between; border: 1px solid var(--line); border-radius: 17px; background: rgba(255,255,255,.62); }
+      .stats article.featured { color: white; background: var(--green); }
+      .stats span, .stats small { font-size: .76rem; }
+      .stats b { font-size: 2.4rem; }
+      .invoice-list { display: grid; gap: 12px; }
+      .invoice-card { padding: 19px 21px; box-shadow: none; }
+      .invoice-main { display: grid; grid-template-columns: auto 1fr auto; gap: 16px; align-items: center; }
+      .pdf { width: 49px; height: 58px; display: grid; place-items: center; border-radius: 9px; color: white; background: var(--orange); font-size: .72rem; font-weight: 900; }
+      .identity h3 { margin: 0; font-size: 1rem; }
+      .identity p { margin: 7px 0 0; color: var(--muted); font-size: .78rem; }
+      .name { display: flex; align-items: center; gap: 8px; }
+      .status { padding: 4px 8px; background: #e5efdd; color: var(--green); }
+      .actions { display: flex; gap: 8px; }
+      .dashboard-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+      .compact-field { display: grid; gap: 6px; min-width: 130px; }
+      .source-filters { padding: 9px 12px; display: flex; flex-wrap: wrap; gap: 10px; border: 1px solid var(--line); border-radius: 12px; }
+      .source-filters legend { padding: 0 4px; color: var(--muted); font-size: .68rem; font-weight: 800; }
+      .source-filters label { display: flex; gap: 5px; align-items: center; font-size: .76rem; font-weight: 700; }
+      .source-filters input { width: auto; min-height: auto; accent-color: var(--green); }
+      .finance-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 22px 0; }
+      .finance-summary article, .balance-results article { padding: 18px; display: grid; gap: 8px; border: 1px solid var(--line); border-radius: 15px; background: rgba(255,255,255,.66); }
+      .finance-summary span, .balance-results span { color: var(--muted); font-size: .75rem; }
+      .finance-summary strong, .balance-results strong { font-size: 1.55rem; }
+      .charts-grid { display: grid; grid-template-columns: 1.2fr .8fr; gap: 14px; }
+      .chart-panel { min-width: 0; padding: 20px; box-shadow: none; }
+      .chart-panel h3 { margin-bottom: 4px; }
+      .chart-toolbar { display: flex; justify-content: space-between; gap: 12px; align-items: start; margin-bottom: 16px; }
+      .chart-toolbar .field { margin: 0; }
+      .bar-chart { min-height: 300px; padding: 20px 0 8px; display: flex; gap: 8px; align-items: end; border-bottom: 1px solid var(--line); overflow: hidden; }
+      .bar-column { flex: 1 0 34px; min-width: 34px; display: grid; align-content: end; gap: 7px; height: 270px; text-align: center; }
+      .bar-stack { height: 220px; display: flex; flex-direction: column-reverse; justify-content: flex-start; border-radius: 7px 7px 2px 2px; overflow: hidden; background: #ecece7; }
+      .bar-part { width: 100%; min-height: 1px; transition: height .25s ease; }
+      .bar-column small { color: var(--muted); font-size: .64rem; white-space: nowrap; }
+      .chart-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 14px; color: var(--muted); font-size: .7rem; }
+      .chart-legend span::before { content: ""; width: 9px; height: 9px; margin-right: 5px; display: inline-block; border-radius: 3px; background: var(--legend-color); }
+      .balance-svg { width: 100%; height: 270px; overflow: visible; }
+      .balance-svg text { fill: var(--muted); font-size: 10px; }
+      .compound-controls { display: grid; grid-template-columns: 1fr 110px; gap: 10px; align-items: end; }
+      .toggle { min-height: 43px; display: flex; gap: 7px; align-items: center; font-size: .75rem; font-weight: 750; }
+      .toggle input { width: auto; min-height: auto; accent-color: var(--green); }
+      .compound-summary { margin: 12px 0 0; padding: 10px 12px; border-radius: 10px; color: var(--green); background: #edf5df; font-size: .76rem; font-weight: 700; }
+      .breakdown-panel { margin-top: 14px; padding: 22px; border: 1px solid var(--line); border-radius: 20px; background: rgba(255,255,255,.55); }
+      .breakdown-heading { align-items: end; }
+      .breakdown-controls { display: grid; grid-template-columns: repeat(4, 130px); gap: 10px; }
+      .breakdown-grid { display: grid; grid-template-columns: .85fr 1.15fr; gap: 18px; margin-top: 22px; }
+      .category-bars { display: grid; gap: 11px; align-content: start; }
+      .category-bar { display: grid; grid-template-columns: 100px 1fr 90px; gap: 9px; align-items: center; border: 0; background: none; text-align: left; }
+      .category-bar > span { height: 12px; border-radius: 999px; background: linear-gradient(90deg, var(--green), var(--green-2)); transform-origin: left; }
+      .category-bar small { color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+      .category-bar b { font-size: .75rem; text-align: right; }
+      .category-bar.active small { color: var(--green); font-weight: 850; }
+      .entry-panel { padding: 18px; border-radius: 16px; background: white; }
+      .entry-summary { display: flex; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--line); }
+      .entry-list { display: grid; }
+      .entry { padding: 12px 0; display: grid; grid-template-columns: 1fr auto; gap: 5px 16px; border-bottom: 1px solid #eceae3; }
+      .entry strong { font-size: .86rem; }
+      .entry small { color: var(--muted); font-size: .7rem; }
+      .entry b { grid-row: span 2; align-self: center; font-size: .86rem; }
+      .card-forecast-grid, .cash-flow-grid { display: grid; grid-template-columns: .82fr 1.18fr; gap: 14px; margin-bottom: 14px; }
+      .finance-form, .panel { padding: 22px; box-shadow: none; }
+      .finance-form h3, .panel h3 { margin-bottom: 5px; }
+      .mock-list { max-height: min(420px, 55vh); padding-right: 6px; display: grid; gap: 9px; margin-top: 15px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+      .mock-item { padding: 13px; display: grid; grid-template-columns: 1fr auto; gap: 4px 14px; border: 1px solid #e6e3da; border-radius: 12px; background: #fff; }
+      .mock-item span { color: var(--muted); font-size: .7rem; }
+      .mock-item strong { font-size: .86rem; }
+      .monthly-balance-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+      .balance-results { padding: 20px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; box-shadow: none; }
+      .balance-results article { padding: 14px; }
+      .balance-results .saved-card { color: white; background: var(--green); }
+      .balance-results .saved-card span, .balance-results .saved-card small { color: #d7e7dc; }
+      .balance-results .primary { grid-column: 1 / -1; }
+      .balance-results .primary:disabled { cursor: not-allowed; opacity: .48; }
+      .transaction-filters { display: grid; grid-template-columns: 1.5fr 1fr 1fr auto; gap: 12px; align-items: end; }
+      .table-wrap { margin-top: 20px; overflow-x: auto; border: 1px solid var(--line); border-radius: 15px; background: white; }
+      table { width: 100%; border-collapse: collapse; min-width: 900px; }
+      th, td { padding: 13px 14px; border-bottom: 1px solid #ebe8df; text-align: left; font-size: .77rem; }
+      th { color: var(--muted); background: #f4f4ef; font-size: .68rem; text-transform: uppercase; letter-spacing: .05em; }
+      td b { color: var(--green); }
+      .connection-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+      .connection { padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: white; }
+      .connection b { display: flex; align-items: center; gap: 7px; }
+      .connection b::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--green-2); }
+      .connection small { color: var(--muted); }
+      details.log-panel { margin-top: 14px; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: white; }
+      .log-line { display: grid; grid-template-columns: 155px 1fr auto; gap: 12px; padding: 10px 0; border-top: 1px solid #eceae3; font: .72rem ui-monospace, SFMono-Regular, Menlo, monospace; }
+      dialog { width: min(470px, calc(100% - 32px)); padding: 0; border: 0; border-radius: 20px; color: var(--ink); background: var(--card); box-shadow: 0 28px 90px rgba(10,20,12,.3); }
+      dialog::backdrop { background: rgba(16, 24, 18, .58); backdrop-filter: blur(4px); }
+      .dialog-content { padding: 28px; }
+      .dialog-icon { width: 50px; height: 50px; display: grid; place-items: center; border-radius: 50%; color: #6b4d08; background: #ffedaf; font-size: 1.5rem; }
+      .dialog-content h2 { margin: 18px 0 10px; }
+      .dialog-content p { color: var(--muted); line-height: 1.6; }
+      .dialog-content .primary { width: 100%; margin-top: 8px; }
+      #toast { position: fixed; right: 22px; bottom: 22px; z-index: 50; max-width: 360px; padding: 13px 16px; border-radius: 12px; color: white; background: var(--ink); box-shadow: var(--shadow); opacity: 0; transform: translateY(12px); pointer-events: none; transition: .2s ease; }
+      #toast.show { opacity: 1; transform: translateY(0); }
+      .footer { padding: 28px 0 48px; display: flex; justify-content: space-between; gap: 20px; color: var(--muted); font-size: .75rem; }
+      .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+      @media (max-width: 980px) {
+        .hero, .charts-grid, .monthly-balance-panel { grid-template-columns: 1fr; }
+        .hero { gap: 28px; padding-top: 46px; }
+        .stats { grid-template-columns: repeat(2, 1fr); }
+        .breakdown-heading { display: grid; }
+        .breakdown-controls { grid-template-columns: repeat(4, 1fr); }
+        .balance-results { min-height: 300px; }
+      }
+      @media (max-width: 720px) {
+        main { width: min(100% - 24px, 1240px); }
+        section { padding: 52px 0; }
+        .demo-pill { font-size: 0; }
+        .demo-pill::after { content: "Demo"; font-size: .74rem; }
+        .section-title, .invoice-main, .card-title { align-items: start; }
+        .section-title, .invoice-main { display: grid; }
+        .section-title > p { text-align: left; }
+        .actions { flex-wrap: wrap; }
+        .finance-summary, .card-forecast-grid, .cash-flow-grid, .breakdown-grid, .connection-list { grid-template-columns: 1fr; }
+        .breakdown-controls, .transaction-filters { grid-template-columns: 1fr; }
+        .balance-results { grid-template-columns: 1fr; }
+        .form-row { grid-template-columns: 1fr; }
+        .source-filters { width: 100%; }
+        .log-line { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="topbar">
+      <a href="#inicio" class="brand"><b>FL</b><span>Fatura Local<small>demonstração pública</small></span></a>
+      <span class="demo-pill">Dados fictícios · nenhuma informação é enviada</span>
+    </header>
+
+    <main id="inicio">
+      <div class="demo-banner" role="note"><b>Modo demonstração</b><p>Esta página funciona somente no navegador com dados fictícios. Nenhuma ação é persistida e nenhum arquivo pode ser enviado.</p></div>
+
+      <section class="hero">
+        <div class="intro">
+          <p class="eyebrow">Controle financeiro demonstrativo</p>
+          <h1>Da fatura ao histórico,<br><em>com visão completa.</em></h1>
+          <p>Explore um exemplo do fluxo de importação, categorização e planejamento financeiro. Todos os nomes, valores e lançamentos abaixo foram criados apenas para esta demonstração.</p>
+          <div class="chips"><span>PDF simulado</span><span>Dados fictícios</span><span>Sem backend</span></div>
+        </div>
+
+        <form id="upload-form" class="upload-card">
+          <div class="card-title"><div><small>Novo registro</small><h2>Adicionar fatura</h2></div><span>SIMULAÇÃO</span></div>
+          <button id="mock-upload-trigger" class="drop-zone" type="button"><b>↑</b><strong>Selecionar PDF</strong><small>Clique para conhecer o fluxo demonstrativo</small></button>
+          <label class="field"><span>Nome da fatura</span><input name="name" type="text" value="Cartão pessoal · agosto/2026" autocomplete="off"><small>Campo demonstrativo, sem armazenamento.</small></label>
+          <label class="field"><span>Data de referência</span><input name="reference_date" type="date" value="2026-08-10"></label>
+          <button class="primary" type="submit">Registrar demonstração →</button>
+          <p class="note">Nenhum seletor real de arquivos é aberto nesta versão.</p>
+        </form>
+      </section>
+
+      <section class="workspace" aria-labelledby="invoices-title">
+        <div class="section-title"><div><p class="eyebrow">Área de trabalho</p><h2 id="invoices-title">Faturas registradas</h2></div><p>Exemplo do histórico e dos diferentes estados de processamento.</p></div>
+        <div class="stats">
+          <article class="featured"><span>Total demonstrativo</span><b>06</b><small>documentos</small></article>
+          <article><span>Aguardando</span><b>01</b><small>para processar</small></article>
+          <article><span>Processadas</span><b>02</b><small>validadas</small></article>
+          <article><span>No banco</span><b>03</b><small>importadas</small></article>
+        </div>
+        <div class="invoice-list">
+          <article class="invoice-card"><div class="invoice-main"><div class="pdf">PDF</div><div class="identity"><div class="name"><h3>Cartão pessoal · julho/2026</h3><span class="status">Importada</span></div><p>fatura-julho.pdf · referência 10/07/2026 · versão 2</p></div><div class="actions"><button class="secondary demo-action" type="button">Reprocessar</button><button class="dark demo-action" type="button">Ver versão</button></div></div></article>
+          <article class="invoice-card"><div class="invoice-main"><div class="pdf">PDF</div><div class="identity"><div class="name"><h3>Cartão pessoal · junho/2026</h3><span class="status">Validada</span></div><p>fatura-junho.pdf · referência 10/06/2026 · versão 1</p></div><div class="actions"><button class="secondary demo-action" type="button">Reprocessar</button><button class="dark demo-action" type="button">Enviar ao banco</button></div></div></article>
+        </div>
+      </section>
+
+      <section class="financial-dashboard" aria-labelledby="dashboard-title">
+        <div class="section-title">
+          <div><p class="eyebrow">Visão mensal</p><h2 id="dashboard-title">Fatura atual e projeção</h2></div>
+          <div class="dashboard-controls">
+            <label class="compact-field"><span>Horizonte</span><select id="dashboard-months"><option value="6">6 meses</option><option value="12" selected>12 meses</option><option value="24">24 meses</option></select></label>
+            <fieldset class="source-filters"><legend>Origem</legend><label><input id="include-card" type="checkbox" checked> Cartão</label><label><input id="include-manual" type="checkbox" checked> Outros meios</label></fieldset><fieldset class="source-filters"><legend>Situação</legend><label><input type="checkbox" checked> Reais</label><label><input type="checkbox"> Previstos</label></fieldset><fieldset class="source-filters"><legend>Saldo</legend><label><input id="include-monthly" type="checkbox"> Mensal</label><label><input id="include-accumulated" type="checkbox"> Acumulado</label></fieldset>
+          </div>
+        </div>
+        <p class="financial-note">Interaja com os filtros para explorar os dados fictícios da projeção.</p>
+        <div class="finance-summary">
+          <article><span>Gastos reais</span><strong id="actual-total">R$ 6.079,55</strong></article>
+          <article><span>Gastos previstos</span><strong>R$ 8.248,90</strong></article>
+          <article><span>Categorias encontradas</span><strong>07</strong></article>
+        </div>
+        <div class="charts-grid">
+          <article class="chart-panel">
+            <div class="chart-toolbar"><div><p class="eyebrow">Gastos por origem</p><h3>Visão dos próximos meses</h3></div></div>
+            <div id="monthly-chart" class="bar-chart" role="img" aria-label="Gráfico demonstrativo dos gastos mensais"></div>
+            <div class="chart-legend"><span style="--legend-color:var(--green)">Cartão</span><span style="--legend-color:var(--orange)">Outros lançamentos</span><span id="monthly-legend" style="--legend-color:var(--blue)" hidden>Saldo mensal</span><span id="accumulated-legend" style="--legend-color:var(--purple)" hidden>Saldo acumulado</span></div>
+          </article>
+          <aside class="chart-panel" aria-labelledby="balance-history-title">
+            <div class="chart-toolbar"><div><p class="eyebrow">Evolução financeira</p><h3 id="balance-history-title">Total guardado ao longo do tempo</h3></div></div>
+            <div class="compound-controls">
+              <label class="toggle"><input id="interest-enabled" type="checkbox"> Simular juros compostos</label>
+              <label class="compact-field"><span>Juros ao mês</span><input id="interest-rate" type="number" min="0" max="100" step="0.01" value="1" disabled></label>
+            </div>
+            <p id="interest-summary" class="compound-summary" hidden></p>
+            <svg id="balance-chart" class="balance-svg" viewBox="0 0 500 270" role="img" aria-label="Evolução fictícia do total guardado"></svg>
+          </aside>
+        </div>
+
+        <article class="breakdown-panel" aria-labelledby="breakdown-title">
+          <div class="breakdown-heading">
+            <div><p class="eyebrow">Detalhamento mensal</p><h3 id="breakdown-title">Categorias e lançamentos do mês</h3><p class="financial-note">Selecione uma categoria para entender os lançamentos que formam o total.</p></div>
+            <div class="breakdown-controls">
+              <label class="compact-field"><span>Mês</span><select id="breakdown-month"><option value="2026-07">Julho/2026</option><option value="2026-08">Agosto/2026</option><option value="2026-09">Setembro/2026</option></select></label>
+              <label class="compact-field"><span>Origem</span><select id="breakdown-source"><option value="all">Todos</option><option value="card">Cartão</option><option value="manual">Outros meios</option></select></label>
+              <label class="compact-field"><span>Situação</span><select><option>Reais e previstos</option><option>Somente reais</option><option>Somente previstos</option></select></label>
+              <label class="compact-field"><span>Categoria</span><select id="breakdown-category"></select></label>
+            </div>
+          </div>
+          <div class="breakdown-grid">
+            <div id="category-bars" class="category-bars" aria-label="Categorias do mês"></div>
+            <section class="entry-panel" aria-live="polite">
+              <div class="entry-summary"><div><small>Categoria selecionada</small><h4 id="category-title">—</h4></div><strong id="category-total">—</strong></div>
+              <p id="entry-count" class="table-footnote"></p>
+              <div id="entry-list" class="entry-list"></div>
+            </section>
+          </div>
+        </article>
+      </section>
+
+      <section class="cash-flow-workspace" aria-labelledby="cash-flow-title">
+        <div class="section-title"><div><p class="eyebrow">Fluxo de caixa</p><h2 id="cash-flow-title">Planejamento mensal</h2></div><p>Cadastre gastos reais ou previstos, no cartão ou em outros meios.</p></div>
+        <div class="cash-flow-grid">
+          <form class="finance-form demo-form"><div><p class="eyebrow">Novo lançamento</p><h3>Adicionar gasto real ou previsto</h3></div><label class="field"><span>Mês inicial</span><input type="month" value="2026-08"></label><label class="field"><span>Descrição</span><input type="text" value="Faculdade"></label><div class="form-row"><label class="field"><span>Valor</span><input type="number" value="780.00"></label><label class="field"><span>Categoria</span><select><option>Educação</option><option>Moradia</option></select></label></div><div class="form-row"><label class="field"><span>Situação</span><select><option>Real</option><option>Previsto / fictício</option></select></label><label class="field"><span>Pagamento</span><select><option>Cartão de crédito</option><option>PIX</option><option>Débito</option></select></label></div><label class="field"><span>Recorrência</span><select><option>Única</option><option>Infinita</option><option>Finita</option></select></label><button class="primary" type="submit">Adicionar lançamento</button></form>
+          <article class="panel"><div class="panel-heading"><div><p class="eyebrow">Histórico</p><h3>Todos os lançamentos</h3></div><button class="secondary demo-action" type="button">Atualizar</button></div><div class="mock-list" tabindex="0" aria-label="Lista de lançamentos"><div class="mock-item"><strong>Curso online</strong><b>R$ 249,90</b><span>Educação · Cartão · previsto · único</span></div><div class="mock-item"><strong>Faculdade</strong><b>R$ 780,00</b><span>Educação · PIX · previsto · finito</span></div><div class="mock-item"><strong>Academia</strong><b>R$ 89,90</b><span>Saúde · Débito · real · infinito</span></div></div></article>
+        </div>
+
+        <article class="monthly-balance-panel">
+          <form id="balance-form" class="finance-form"><div><p class="eyebrow">Planejamento mensal</p><h3>Rendimento e guardado</h3></div><p class="form-note">Compare o resultado completo com a simulação contendo somente os gastos do cartão.</p><label class="field"><span>Mês fechado</span><input id="balance-month" type="month" value="2026-07"></label><label class="field"><span>Gastos considerados</span><select id="balance-scope"><option value="all">Cartão + outros lançamentos</option><option value="card">Somente cartão</option></select><small>“Somente cartão” é uma simulação e não pode ser aplicada ao guardado.</small></label><label class="field"><span>Rendimento mensal</span><input id="income" type="number" value="7988.76"></label><label class="field"><span>Já guardado antes deste resultado (antes das cobranças do mês fechado)</span><input id="saved-base" type="number" value="6459.27"></label><button class="dark" type="submit">Atualizar simulação</button></form>
+          <div class="balance-results"><article><span>Gastos do mês</span><strong id="balance-expenses">—</strong><small id="expense-sources"></small></article><article><span>Resultado</span><strong id="balance-result">—</strong><small>rendimento − gastos</small></article><article class="saved-card"><span>Total guardado</span><strong id="balance-saved">—</strong><small id="applied-state"></small></article><button id="apply-result" class="primary" type="button">Adicionar resultado ao guardado</button></div>
+        </article>
+      </section>
+
+      <section aria-labelledby="transactions-title">
+        <div class="section-title"><div><p class="eyebrow">Base de aprendizado</p><h2 id="transactions-title">Categorizar transações</h2></div><button class="secondary demo-action" type="button">Atualizar transações</button></div>
+        <p class="financial-note">Tabela fictícia para demonstrar a revisão e categorização dos gastos.</p>
+        <form id="transaction-filters" class="transaction-filters"><label class="field"><span>Buscar</span><input id="transaction-search" type="search" placeholder="Estabelecimento ou descrição"></label><label class="field"><span>Categoria</span><select id="transaction-category"><option value="">Todas</option><option>Alimentação</option><option>Transporte</option><option>Assinaturas</option></select></label><label class="field"><span>Revisão</span><select id="transaction-status"><option value="">Todos os estados</option><option value="Confirmada">Confirmada</option><option value="Sugestão">Com sugestão</option><option value="Pendente">Pendente</option></select></label><button class="dark" type="submit">Aplicar filtros</button></form>
+        <div class="table-wrap"><table><thead><tr><th>Data</th><th>Estabelecimento</th><th>Valor</th><th>Parcelamento</th><th>Recorrência</th><th>Categoria efetiva</th><th>Origem</th><th></th></tr></thead><tbody id="transaction-list"></tbody></table></div>
+        <p id="transaction-count" class="table-footnote"></p>
+      </section>
+
+      <section aria-labelledby="diagnostics-title">
+        <div class="section-title"><div><p class="eyebrow">Observabilidade ilustrativa</p><h2 id="diagnostics-title">Logs e conexões</h2></div><button class="secondary demo-action" type="button">Atualizar diagnóstico</button></div>
+        <p class="financial-note">Estes estados e eventos também são fictícios; a página pública não tenta se conectar a nenhum serviço.</p>
+        <div class="connection-list"><article class="connection"><b>Interface estática</b><small>Disponível · 4 ms</small></article><article class="connection"><b>Dados demonstrativos</b><small>Carregados no navegador</small></article><article class="connection"><b>Persistência</b><small>Desativada nesta versão</small></article></div>
+        <details class="log-panel"><summary>Eventos demonstrativos <b>3</b></summary><div class="log-line"><span>05/08/2026 14:32:10</span><span>demo.page_loaded</span><b>ok</b></div><div class="log-line"><span>05/08/2026 14:32:11</span><span>demo.mock_data_rendered</span><b>ok</b></div><div class="log-line"><span>05/08/2026 14:32:12</span><span>demo.persistence_disabled</span><b>safe</b></div></details>
+      </section>
+
+      <footer class="footer"><span>Fatura Local · versão demonstrativa</span><span>Dados fictícios · sem upload · sem persistência</span></footer>
+    </main>
+
+    <dialog id="simulation-dialog" aria-labelledby="dialog-title">
+      <div class="dialog-content"><div class="dialog-icon">!</div><h2 id="dialog-title">Apenas uma simulação</h2><p id="dialog-message">Esta demonstração não permite enviar arquivos. Nenhum PDF foi selecionado, transmitido ou armazenado.</p><button id="dialog-close" class="primary" type="button">Entendi</button></div>
+    </dialog>
+    <div id="toast" role="status" aria-live="polite"></div>
+
+    <script>
+      "use strict";
+
+      const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+      const shortMonths = ["Ago", "Set", "Out", "Nov", "Dez", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul"];
+      const chartData = shortMonths.map((month, index) => ({
+        month,
+        card: Math.max(1450, 6079 - index * 205 + Math.sin(index * 1.7) * 420),
+        manual: 2519 + (index % 5 === 2 ? 360 : 0),
+      }));
+      const categories = {
+        "2026-07": [
+          { name: "Moradia", entries: [{ description: "Aluguel", source: "manual", amount: 1650 }, { description: "Energia elétrica", source: "manual", amount: 286.45 }] },
+          { name: "Alimentação", entries: [{ description: "Mercado Central", source: "card", amount: 612.30 }, { description: "Restaurante Jardim", source: "card", amount: 184.70 }, { description: "Padaria do Bairro", source: "card", amount: 68.20 }] },
+          { name: "Educação", entries: [{ description: "Faculdade", source: "manual", amount: 780 }, { description: "Livraria Online", source: "card", amount: 129.90 }] },
+          { name: "Transporte", entries: [{ description: "Posto Avenida", source: "card", amount: 328.40 }, { description: "Aplicativo de mobilidade", source: "card", amount: 96.50 }] },
+          { name: "Assinaturas", entries: [{ description: "Streaming Filmes", source: "card", amount: 55.90 }, { description: "Armazenamento digital", source: "card", amount: 39.90 }] },
+        ],
+        "2026-08": [
+          { name: "Moradia", entries: [{ description: "Aluguel", source: "manual", amount: 1650 }] },
+          { name: "Educação", entries: [{ description: "Faculdade", source: "manual", amount: 780 }, { description: "Curso online", source: "card", amount: 249.90 }] },
+          { name: "Viagem", entries: [{ description: "Hospedagem", source: "card", amount: 560.40 }] },
+          { name: "Saúde", entries: [{ description: "Academia", source: "manual", amount: 89.90 }, { description: "Farmácia", source: "card", amount: 112.70 }] },
+        ],
+        "2026-09": [
+          { name: "Moradia", entries: [{ description: "Aluguel", source: "manual", amount: 1650 }] },
+          { name: "Viagem", entries: [{ description: "Passagem aérea", source: "card", amount: 418.50 }] },
+          { name: "Assinaturas", entries: [{ description: "Streaming Filmes", source: "card", amount: 55.90 }, { description: "Armazenamento digital", source: "card", amount: 39.90 }] },
+        ],
+      };
+      const transactions = [
+        { date: "08/07/2026", merchant: "Mercado Central", amount: 612.30, installment: "À vista", recurrence: "Não", category: "Alimentação", status: "Confirmada" },
+        { date: "07/07/2026", merchant: "Posto Avenida", amount: 328.40, installment: "À vista", recurrence: "Não", category: "Transporte", status: "Confirmada" },
+        { date: "06/07/2026", merchant: "Streaming Filmes", amount: 55.90, installment: "À vista", recurrence: "Mensal", category: "Assinaturas", status: "Sugestão" },
+        { date: "05/07/2026", merchant: "Loja Horizonte", amount: 219.90, installment: "2 de 4", recurrence: "Não", category: "—", status: "Pendente" },
+        { date: "03/07/2026", merchant: "Restaurante Jardim", amount: 184.70, installment: "À vista", recurrence: "Não", category: "Alimentação", status: "Confirmada" },
+      ];
+
+      const dialog = document.querySelector("#simulation-dialog");
+      const toast = document.querySelector("#toast");
+      let toastTimer;
+
+      function showSimulation(message = "Esta demonstração não permite enviar arquivos. Nenhum PDF foi selecionado, transmitido ou armazenado.") {
+        document.querySelector("#dialog-message").textContent = message;
+        if (typeof dialog.showModal === "function") dialog.showModal();
+        else alert(message);
+      }
+
+      function notify(message) {
+        clearTimeout(toastTimer);
+        toast.textContent = message;
+        toast.classList.add("show");
+        toastTimer = setTimeout(() => toast.classList.remove("show"), 2600);
+      }
+
+      function renderMonthlyChart() {
+        const horizon = Number(document.querySelector("#dashboard-months").value);
+        const includeCard = document.querySelector("#include-card").checked;
+        const includeManual = document.querySelector("#include-manual").checked;
+        const includeMonthly = document.querySelector("#include-monthly").checked;
+        const includeAccumulated = document.querySelector("#include-accumulated").checked;
+        const values = chartData.slice(0, horizon);
+        const max = Math.max(...values.map(item => (includeCard ? item.card : 0) + (includeManual ? item.manual : 0)), 1);
+        let accumulated = 6459.27;
+        document.querySelector("#monthly-chart").innerHTML = values.map(item => {
+          const cardHeight = includeCard ? item.card / max * 190 : 0;
+          const manualHeight = includeManual ? item.manual / max * 190 : 0;
+          const result = 7988.76 - (includeCard ? item.card : 0) - (includeManual ? item.manual : 0);
+          accumulated += result;
+          const overlay = includeAccumulated ? Math.max(3, Math.min(18, accumulated / 1600)) : includeMonthly ? Math.max(3, Math.min(18, Math.abs(result) / 130)) : 0;
+          const overlayColor = includeAccumulated ? "var(--purple)" : "var(--blue)";
+          return `<div class="bar-column" title="${item.month}: ${money.format((includeCard ? item.card : 0) + (includeManual ? item.manual : 0))}"><div class="bar-stack"><span class="bar-part" style="height:${cardHeight}px;background:var(--green)"></span><span class="bar-part" style="height:${manualHeight}px;background:var(--orange)"></span>${overlay ? `<span class="bar-part" style="height:${overlay}px;background:${overlayColor}"></span>` : ""}</div><small>${item.month}</small></div>`;
+        }).join("");
+        document.querySelector("#monthly-legend").hidden = !includeMonthly;
+        document.querySelector("#accumulated-legend").hidden = !includeAccumulated;
+        document.querySelector("#actual-total").textContent = money.format((includeCard ? chartData[0].card : 0) + (includeManual ? chartData[0].manual : 0));
+      }
+
+      function renderBalanceChart() {
+        const enabled = document.querySelector("#interest-enabled").checked;
+        const rate = enabled ? Math.max(0, Number(document.querySelector("#interest-rate").value) || 0) / 100 : 0;
+        let balance = 6459.27;
+        let noInterest = balance;
+        const points = chartData.slice(0, 12).map((item, index) => {
+          const result = 7988.76 - item.card - item.manual;
+          balance = balance * (1 + rate) + result;
+          noInterest += result;
+          return { x: 26 + index * 40, value: balance, label: item.month };
+        });
+        const min = Math.min(...points.map(point => point.value), 0);
+        const max = Math.max(...points.map(point => point.value), 1);
+        const y = value => 225 - ((value - min) / (max - min || 1)) * 180;
+        const polyline = points.map(point => `${point.x},${y(point.value)}`).join(" ");
+        const dots = points.map(point => `<circle cx="${point.x}" cy="${y(point.value)}" r="4" fill="#235943"><title>${point.label}: ${money.format(point.value)}</title></circle><text x="${point.x}" y="250" text-anchor="middle">${point.label}</text>`).join("");
+        document.querySelector("#balance-chart").innerHTML = `<line x1="20" y1="225" x2="480" y2="225" stroke="#dedbd1"/><line x1="20" y1="45" x2="480" y2="45" stroke="#eeece5"/><polyline points="${polyline}" fill="none" stroke="#235943" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>${dots}`;
+        const summary = document.querySelector("#interest-summary");
+        summary.hidden = !enabled;
+        summary.textContent = enabled ? `Saldo final simulado: ${money.format(balance)} · juros acumulados: ${money.format(balance - noInterest)}` : "";
+      }
+
+      function filteredCategories() {
+        const month = document.querySelector("#breakdown-month").value;
+        const source = document.querySelector("#breakdown-source").value;
+        return (categories[month] || []).map(category => ({
+          name: category.name,
+          entries: category.entries.filter(entry => source === "all" || entry.source === source),
+        })).filter(category => category.entries.length);
+      }
+
+      function renderBreakdown(preferredCategory) {
+        const data = filteredCategories();
+        const select = document.querySelector("#breakdown-category");
+        const current = preferredCategory || select.value;
+        select.innerHTML = data.map(category => `<option>${category.name}</option>`).join("");
+        select.value = data.some(category => category.name === current) ? current : data[0]?.name || "";
+        const selected = data.find(category => category.name === select.value);
+        const totals = data.map(category => category.entries.reduce((sum, entry) => sum + entry.amount, 0));
+        const max = Math.max(...totals, 1);
+        document.querySelector("#category-bars").innerHTML = data.map((category, index) => `<button class="category-bar ${category.name === select.value ? "active" : ""}" data-category="${category.name}" type="button"><small>${category.name}</small><span style="transform:scaleX(${totals[index] / max})"></span><b>${money.format(totals[index])}</b></button>`).join("") || `<p class="financial-note">Nenhum lançamento para este filtro.</p>`;
+        document.querySelector("#category-title").textContent = selected?.name || "Nenhuma categoria";
+        const selectedTotal = selected?.entries.reduce((sum, entry) => sum + entry.amount, 0) || 0;
+        document.querySelector("#category-total").textContent = money.format(selectedTotal);
+        document.querySelector("#entry-count").textContent = selected ? `${selected.entries.length} lançamento(s) demonstrativo(s)` : "";
+        document.querySelector("#entry-list").innerHTML = selected?.entries.map(entry => `<article class="entry"><strong>${entry.description}</strong><b>${money.format(entry.amount)}</b><small>${entry.source === "card" ? "Cartão" : "Outros lançamentos"}</small></article>`).join("") || "";
+      }
+
+      function renderBalance() {
+        const cardOnly = document.querySelector("#balance-scope").value === "card";
+        const income = Number(document.querySelector("#income").value) || 0;
+        const saved = Number(document.querySelector("#saved-base").value) || 0;
+        const card = 6079.55;
+        const manual = 2519.05;
+        const expenses = card + (cardOnly ? 0 : manual);
+        const result = income - expenses;
+        document.querySelector("#balance-expenses").textContent = money.format(expenses);
+        document.querySelector("#balance-result").textContent = money.format(result);
+        document.querySelector("#balance-result").style.color = result >= 0 ? "var(--green)" : "var(--danger)";
+        document.querySelector("#balance-saved").textContent = money.format(saved + result);
+        document.querySelector("#expense-sources").textContent = cardOnly ? `${money.format(manual)} em outros lançamentos fora da simulação` : `Cartão ${money.format(card)} · outros ${money.format(manual)}`;
+        document.querySelector("#applied-state").textContent = cardOnly ? "saldo projetado somente com o cartão" : "guardado anterior + resultado do mês";
+        const apply = document.querySelector("#apply-result");
+        apply.disabled = cardOnly;
+        apply.textContent = cardOnly ? "Simulação — não aplicável" : "Adicionar resultado ao guardado";
+      }
+
+      function renderTransactions() {
+        const search = document.querySelector("#transaction-search").value.trim().toLocaleLowerCase("pt-BR");
+        const category = document.querySelector("#transaction-category").value;
+        const status = document.querySelector("#transaction-status").value;
+        const filtered = transactions.filter(item => (!search || item.merchant.toLocaleLowerCase("pt-BR").includes(search)) && (!category || item.category === category) && (!status || item.status === status));
+        document.querySelector("#transaction-list").innerHTML = filtered.map(item => `<tr><td>${item.date}</td><td><strong>${item.merchant}</strong></td><td>${money.format(item.amount)}</td><td>${item.installment}</td><td>${item.recurrence}</td><td><b>${item.category}</b></td><td>${item.status}</td><td><button class="text-action demo-action" type="button">Revisar</button></td></tr>`).join("") || `<tr><td colspan="8">Nenhuma transação fictícia encontrada.</td></tr>`;
+        document.querySelector("#transaction-count").textContent = `${filtered.length} de ${transactions.length} transações demonstrativas`;
+      }
+
+      document.querySelector("#mock-upload-trigger").addEventListener("click", () => showSimulation());
+      document.querySelector("#upload-form").addEventListener("submit", event => { event.preventDefault(); showSimulation(); });
+      document.querySelector("#dialog-close").addEventListener("click", () => dialog.close());
+      dialog.addEventListener("click", event => { if (event.target === dialog) dialog.close(); });
+      document.querySelectorAll(".demo-form").forEach(form => form.addEventListener("submit", event => { event.preventDefault(); notify("Ação simulada: nenhum dado foi salvo."); }));
+      document.addEventListener("click", event => {
+        const demoButton = event.target.closest(".demo-action");
+        if (demoButton) notify("Ação demonstrativa: nenhuma alteração foi realizada.");
+        const categoryButton = event.target.closest("[data-category]");
+        if (categoryButton) { document.querySelector("#breakdown-category").value = categoryButton.dataset.category; renderBreakdown(categoryButton.dataset.category); }
+      });
+      ["#dashboard-months", "#include-card", "#include-manual", "#include-monthly", "#include-accumulated"].forEach(selector => document.querySelector(selector).addEventListener("change", renderMonthlyChart));
+      document.querySelector("#interest-enabled").addEventListener("change", event => { document.querySelector("#interest-rate").disabled = !event.target.checked; renderBalanceChart(); });
+      document.querySelector("#interest-rate").addEventListener("input", renderBalanceChart);
+      ["#breakdown-month", "#breakdown-source"].forEach(selector => document.querySelector(selector).addEventListener("change", () => renderBreakdown()));
+      document.querySelector("#breakdown-category").addEventListener("change", () => renderBreakdown());
+      ["#balance-scope", "#income", "#saved-base"].forEach(selector => document.querySelector(selector).addEventListener("input", renderBalance));
+      document.querySelector("#balance-form").addEventListener("submit", event => { event.preventDefault(); renderBalance(); notify("Valores atualizados somente nesta simulação."); });
+      document.querySelector("#apply-result").addEventListener("click", () => notify("Ação simulada: o guardado não foi alterado."));
+      document.querySelector("#transaction-filters").addEventListener("submit", event => { event.preventDefault(); renderTransactions(); });
+
+      renderMonthlyChart();
+      renderBalanceChart();
+      renderBreakdown();
+      renderBalance();
+      renderTransactions();
+    </script>
+  </body>
+</html>

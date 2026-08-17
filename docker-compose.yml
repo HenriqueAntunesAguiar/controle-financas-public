@@ -1,0 +1,95 @@
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: postgres_db
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5432:5432"
+    environment:
+      POSTGRES_DB: controle_financas
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  web:
+    build:
+      context: .
+      dockerfile: services/invoice_web/Dockerfile
+    container_name: controle_financas_web
+    restart: unless-stopped
+    init: true
+    env_file:
+      - ./services/ai_agent/.env
+    ports:
+      - "127.0.0.1:5000:5000"
+    environment:
+      WEB_HOST: 0.0.0.0
+      WEB_PORT: 5000
+      WEB_DOCKER_MODE: "1"
+      PRIVATE_ROOT: /app/private
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: controle_financas
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - ./private:/app/private
+    depends_on:
+      db:
+        condition: service_healthy
+      db_schema_setup:
+        condition: service_completed_successfully
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health/live', timeout=2)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  db_schema_setup:
+    image: postgres:17-alpine
+    container_name: controle_financas_db_create_update
+    restart: "no"
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - ./services/invoice_web/fastapi_app/adapters/outbound/persistence/postgres_schema.sql:/migrations/financeiro.sql:ro
+      - ./services/spend_label/repository/postgres_schema.sql:/migrations/spend_label.sql:ro
+      - ./services/cash_flow/repository/postgres_schema.sql:/migrations/cash_flow.sql:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    command:
+      - sh
+      - -ec
+      - |
+        for migration in \
+          /migrations/financeiro.sql \
+          /migrations/spend_label.sql \
+          /migrations/cash_flow.sql
+        do
+          echo "Criando/atualizando o banco com $${migration}"
+          psql -X \
+            --set ON_ERROR_STOP=1 \
+            --single-transaction \
+            --host db \
+            --username "$${POSTGRES_USER:-postgres}" \
+            --dbname controle_financas \
+            --file "$${migration}"
+        done
+
+volumes:
+  postgres_data: {}
+  ollama_data:

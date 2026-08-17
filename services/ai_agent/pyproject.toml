@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "controle-financas-ai-agent"
+version = "0.1.0"
+description = "Agentes de IA do controle de financas"
+requires-python = ">=3.12"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = [
+    "ai_manager*",
+    "financial_data_agent*",
+    "financial_operation_agent*",
+    "guardrails*",
+    "memory*",
+    "model_providers*",
+    "observability*",
+]

@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>Fatura Local</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/app.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/finance.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/diagnostics.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/assistant.css') }}">
+    <script src="{{ url_for('static', path='/vendor/chart.umd.min.js') }}" defer></script>
+    <script src="{{ url_for('static', path='/app.js') }}" defer></script>
+    <script src="{{ url_for('static', path='/assistant.js') }}" defer></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a href="/" class="brand"><b>FL</b><span>Fatura Local<small>arquivo privado</small></span></a>
+      <span class="local"><i></i> somente neste computador</span>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="intro">
+          <p class="eyebrow">Controle sem nuvem</p>
+          <h1>Da fatura ao histórico,<br><em>sem sair da máquina.</em></h1>
+          <p>Registre o PDF localmente, crie versões imutáveis e decida quando cada resultado deve entrar no PostgreSQL.</p>
+          <div class="chips"><span>PDF privado</span><span>Versões preservadas</span><span>Importação manual</span></div>
+        </div>
+
+        <form id="upload-form" class="upload-card">
+          <div class="card-title"><div><small>Novo registro</small><h2>Adicionar fatura</h2></div><span>PDF · 50 MB</span></div>
+          <label id="drop-zone" class="drop-zone">
+            <input id="invoice-file" name="invoice" type="file" accept="application/pdf,.pdf" required>
+            <b>↑</b><strong id="file-label">Solte o PDF aqui</strong><small>ou clique para selecionar</small>
+          </label>
+          <label class="field"><span>Nome da fatura</span><input name="name" type="text" maxlength="120" placeholder="Ex.: Itaú pessoal · agosto/2026" autocomplete="off" required><small>Este nome aparecerá no histórico e no PostgreSQL.</small></label>
+          <label class="field"><span>Data de referência</span><input name="reference_date" type="date" required><small>Fechamento ou vencimento.</small></label>
+          <button class="primary" type="submit">Registrar localmente →</button>
+          <p class="note">O arquivo termina na pasta privada deste projeto.</p>
+        </form>
+      </section>
+
+      <section class="workspace">
+        <div class="section-title"><div><p class="eyebrow">Área de trabalho</p><h2>Faturas registradas</h2></div><p>Ações explícitas e histórico preservado.</p></div>
+        <div class="stats">
+          <article class="featured"><span>Total local</span><b>{{ stats.total }}</b><small>documentos</small></article>
+          <article><span>Aguardando</span><b>{{ stats.received }}</b><small>para processar</small></article>
+          <article><span>Processadas</span><b>{{ stats.ready }}</b><small>somente locais</small></article>
+          <article><span>No banco</span><b>{{ stats.imported }}</b><small>importadas</small></article>
+        </div>
+
+        {% if invoices %}
+          <div class="invoice-list">
+          {% for invoice in invoices %}
+            <article class="invoice-card">
+              <div class="invoice-main">
+                <div class="pdf">PDF</div>
+                <div class="identity">
+                  <div class="name"><h3>{{ invoice.name }}</h3><span class="status {{ invoice.status }}">{{ invoice.status }}</span></div>
+                  <p>{{ invoice.filename }} · referência {{ invoice.reference_date }} · {{ invoice.created_at|local_date }}{% if invoice.current_version %} · versão {{ invoice.current_version }}{% endif %}</p>
+                  {% if invoice.error_code %}<small class="error">A última ação falhou. Tente novamente.</small>{% endif %}
+                </div>
+                <div class="actions">
+                  <button class="secondary process" data-id="{{ invoice.id }}">{% if invoice.current_version %}Reprocessar{% else %}Processar PDF{% endif %}</button>
+                  {% if invoice.current_version and invoice.version_status == 'needs_review' %}<button class="secondary approve" data-id="{{ invoice.id }}">Aprovar revisão</button>{% endif %}
+                  {% if invoice.current_version and invoice.version_status == 'ready' %}<button class="dark import" data-id="{{ invoice.id }}">Enviar ao banco</button>{% endif %}
+                </div>
+              </div>
+              {% if invoice.versions %}
+              <details><summary>Histórico de versões <b>{{ invoice.versions|length }}</b></summary>
+                {% for version in invoice.versions %}<div class="version"><strong>Versão {{ version.version_number }}</strong><span>{{ version.transaction_count }} transações</span><span>{% if version.status == 'imported' %}Importada{% elif version.status == 'needs_review' %}Revisão necessária{% else %}Validada localmente{% endif %}</span></div>{% endfor %}
+              </details>
+              {% endif %}
+            </article>
+          {% endfor %}
+          </div>
+        {% else %}
+          <div class="empty"><b>00</b><div><h3>Nenhuma fatura registrada</h3><p>Seu primeiro PDF aparecerá aqui.</p></div></div>
+        {% endif %}
+      </section>
+
+      <section class="financial-dashboard" aria-labelledby="dashboard-title">
+        <div class="section-title">
+          <div><p class="eyebrow">Visão mensal</p><h2 id="dashboard-title">Fatura atual e projeção</h2></div>
+          <div class="dashboard-controls">
+            <label class="compact-field"><span>Horizonte</span><select id="dashboard-months"><option value="6">6 meses</option><option value="12" selected>12 meses</option><option value="24">24 meses</option></select></label>
+            <fieldset class="source-filters"><legend>Origem</legend><label><input id="include-card" type="checkbox" checked> Cartão</label><label><input id="include-manual" type="checkbox" checked> Outros meios</label></fieldset>
+            <fieldset class="source-filters"><legend>Situação</legend><label><input id="include-actual" type="checkbox" checked> Reais</label><label><input id="include-projected" type="checkbox"> Previstos</label></fieldset>
+            <fieldset class="source-filters"><legend>Saldo</legend><label><input id="include-monthly-balance" type="checkbox"> Mensal</label><label><input id="include-accumulated-balance" type="checkbox"> Acumulado</label></fieldset>
+          </div>
+        </div>
+        <p id="dashboard-note" class="financial-note">A maior categoria de cada mês aparece na base da coluna. Passe sobre uma faixa para ver a categoria ou sobre o nome do mês para ver todas.</p>
+        <div class="finance-summary">
+          <article><span>Gastos reais</span><strong id="chart-actual-total">—</strong></article>
+          <article><span>Gastos previstos</span><strong id="chart-projected-total">—</strong></article>
+          <article><span>Categorias encontradas</span><strong id="chart-category-count">—</strong></article>
+        </div>
+        <div class="charts-grid">
+          <div class="chart-shell"><canvas id="monthly-chart" aria-label="Gráfico mensal de gastos por categoria"></canvas><p id="chart-empty" class="loading" hidden>Nenhum gasto importado para o período.</p></div>
+          <aside class="balance-history-panel" aria-labelledby="balance-history-title">
+            <div class="balance-history-heading">
+              <div><p class="eyebrow">Evolução financeira</p><h3 id="balance-history-title">Total guardado ao longo do tempo</h3></div>
+              <div class="compound-interest-controls">
+                <label class="compound-interest-toggle"><input id="compound-interest-enabled" type="checkbox"> Simular juros compostos</label>
+                <label class="compact-field"><span>Juros ao mês</span><span class="percentage-input"><input id="compound-interest-rate" type="number" min="0" max="100" step="0.01" value="1" disabled><b>%</b></span></label>
+              </div>
+            </div>
+            <p id="compound-interest-summary" class="compound-interest-summary" hidden></p>
+            <div class="balance-history-shell"><canvas id="balance-history-chart" aria-label="Gráfico do total guardado, rendimento e gastos ao longo do tempo"></canvas><p id="balance-history-empty" class="loading" hidden>Informe rendimento e valor guardado para visualizar a evolução.</p></div>
+          </aside>
+        </div>
+        <article class="monthly-breakdown-panel" aria-labelledby="monthly-breakdown-title">
+          <div class="monthly-breakdown-heading">
+            <div><p class="eyebrow">Detalhamento mensal</p><h3 id="monthly-breakdown-title">Categorias e lançamentos do mês</h3><p>Selecione um mês e clique em uma categoria para conferir os lançamentos que formam o total.</p></div>
+            <div class="monthly-breakdown-controls">
+              <label class="compact-field"><span>Mês</span><select id="breakdown-month" aria-label="Mês do detalhamento"></select></label>
+              <label class="compact-field"><span>Origem</span><select id="breakdown-source" aria-label="Origem dos lançamentos"><option value="all">Todos</option><option value="card">Cartão</option><option value="manual">Outros meios</option></select></label>
+              <label class="compact-field"><span>Situação</span><select id="breakdown-kind" aria-label="Situação dos lançamentos"><option value="all">Reais e previstos</option><option value="actual">Somente reais</option><option value="projected">Somente previstos</option></select></label>
+              <label class="compact-field"><span>Categoria</span><select id="breakdown-category" aria-label="Categoria do detalhamento"></select></label>
+            </div>
+          </div>
+          <div class="monthly-breakdown-grid">
+            <div class="category-breakdown-chart-shell"><canvas id="category-breakdown-chart" aria-label="Gráfico das categorias do mês selecionado"></canvas><p id="category-breakdown-empty" class="loading" hidden>Nenhum lançamento encontrado neste mês.</p></div>
+            <section class="category-entry-panel" aria-live="polite">
+              <div class="category-entry-summary"><div><span>Categoria selecionada</span><h4 id="breakdown-category-title">—</h4></div><strong id="breakdown-category-total">—</strong></div>
+              <p id="breakdown-entry-count" class="table-footnote"></p>
+              <div id="breakdown-entry-list" class="breakdown-entry-list"><p class="loading">Selecione um mês para detalhar.</p></div>
+            </section>
+          </div>
+        </article>
+      </section>
+
+      <section class="cash-flow-workspace" aria-labelledby="cash-flow-title">
+        <div class="section-title"><div><p class="eyebrow">Fluxo de caixa</p><h2 id="cash-flow-title">Planejamento mensal</h2></div><p>Cadastre gastos reais ou previstos, no cartão ou em outros meios.</p></div>
+        <div class="cash-flow-grid">
+          <form id="manual-expense-form" class="finance-form">
+            <div><p class="eyebrow">Novo lançamento</p><h3 id="manual-expense-form-title">Adicionar gasto real ou previsto</h3></div>
+            <label class="field"><span>Mês inicial</span><input id="manual-expense-month" type="month" required><small>Novos lançamentos começam, por padrão, no mês seguinte ao último fechamento.</small></label>
+            <label class="field"><span>Descrição</span><input id="manual-expense-description" type="text" maxlength="180" placeholder="Ex.: Faculdade" autocomplete="off" required></label>
+            <div class="form-row"><label class="field"><span>Valor</span><input id="manual-expense-amount" type="number" min="0.01" step="0.01" required></label><label class="field"><span>Categoria</span><select id="manual-expense-category" required></select></label></div>
+            <div class="form-row"><label class="field"><span>Situação</span><select id="manual-expense-type"><option value="actual">Real</option><option value="planned">Previsto / fictício</option></select><small>Real é um compromisso confirmado, mesmo futuro. Previsto é apenas uma simulação fictícia.</small></label><label class="field"><span>Pagamento</span><select id="manual-expense-payment"><option value="credito">Cartão de crédito</option><option value="pix">PIX</option><option value="debito">Débito</option><option value="dinheiro">Dinheiro</option><option value="transferencia">Transferência</option><option value="outro">Outro</option></select></label></div>
+            <label class="field"><span>Recorrência</span><select id="manual-expense-recurrence-mode"><option value="none">Única</option><option value="unlimited">Infinita</option><option value="until">Finita</option></select></label>
+            <label id="manual-expense-recurrence-end-field" class="field" hidden><span>Último mês</span><input id="manual-expense-recurrence-end" type="month"><small>O valor entra do mês inicial até este mês, inclusive.</small></label>
+            <div class="form-actions"><button id="manual-expense-submit" class="primary" type="submit">Adicionar lançamento</button><button id="manual-expense-cancel" class="secondary" type="button" hidden>Cancelar edição</button></div>
+          </form>
+          <article class="manual-expenses-panel"><div class="panel-heading"><div><p class="eyebrow">Histórico</p><h3>Todos os lançamentos</h3></div><button id="refresh-manual-expenses" class="secondary" type="button">Atualizar</button></div><div id="manual-expense-list" class="manual-expense-list" tabindex="0" aria-label="Lista de lançamentos"><p class="loading">Carregando lançamentos…</p></div></article>
+        </div>
+
+        <article class="monthly-balance-panel">
+          <form id="monthly-balance-form" class="monthly-balance-form">
+            <div><p class="eyebrow">Planejamento mensal</p><h3>Rendimento e guardado</h3></div>
+            <p class="form-note">Por padrão, este resumo usa o último mês com fatura fechada. Lançamentos futuros não alteram esse resultado.</p>
+            <label class="field"><span>Mês fechado</span><input id="balance-month" type="month" required></label>
+            <label class="field"><span>Gastos considerados</span><select id="balance-expense-scope"><option value="card_and_manual">Cartão + outros lançamentos</option><option value="card_only">Somente cartão</option></select><small>“Somente cartão” é uma simulação e não pode ser aplicada ao guardado.</small></label>
+            <label class="field"><span>Rendimento mensal</span><input id="monthly-income" type="number" min="0" step="0.01" required></label>
+            <label class="field"><span>Já guardado antes deste resultado (antes das cobranças do mês fechado)</span><input id="saved-base" type="number" min="0" step="0.01" required></label>
+            <button class="dark" type="submit">Salvar valores</button>
+          </form>
+          <div class="balance-results">
+            <article><span>Gastos do mês</span><strong id="balance-expenses">—</strong><small id="balance-expense-sources"></small></article>
+            <article><span>Resultado</span><strong id="balance-result">—</strong><small>rendimento − gastos</small></article>
+            <article class="saved-card"><span>Total guardado</span><strong id="balance-saved">—</strong><small id="balance-applied-state">resultado ainda não aplicado</small></article>
+            <button id="apply-month-result" class="primary" type="button">Adicionar resultado ao guardado</button>
+          </div>
+        </article>
+      </section>
+
+      <section class="categorization-workspace" aria-labelledby="categorization-title">
+        <div class="section-title">
+          <div><p class="eyebrow">Base de aprendizado</p><h2 id="categorization-title">Categorizar transações</h2></div>
+          <button id="refresh-transactions" class="secondary" type="button">Atualizar transações</button>
+        </div>
+        <p class="financial-note">Uma confirmação manual pode valer somente para a compra ou tornar-se regra para todo o estabelecimento.</p>
+        <form id="transaction-filters" class="transaction-filters">
+          <label class="field"><span>Buscar</span><input id="transaction-search" type="search" maxlength="120" placeholder="Estabelecimento, descrição ou localidade" autocomplete="off"></label>
+          <label class="field"><span>Categoria</span><select id="transaction-category-filter"><option value="">Todas as categorias</option></select></label>
+          <label class="field"><span>Revisão</span><select id="transaction-status-filter"><option value="all">Todos os estados</option><option value="pending">Pendente de revisão</option><option value="confirmed">Confirmada pelo usuário</option><option value="suggested">Com sugestão</option></select></label>
+          <div class="filter-actions"><button class="dark" type="submit">Aplicar filtros</button><button id="clear-transaction-filters" class="text-action" type="button">Limpar</button></div>
+        </form>
+        <div class="transaction-table-wrap">
+          <table class="transaction-table">
+            <thead><tr>
+              <th data-sort="date" aria-sort="descending"><button class="sort-button" type="button">Data <span class="sort-indicator">↓</span></button></th>
+              <th data-sort="merchant" aria-sort="none"><button class="sort-button" type="button">Estabelecimento <span class="sort-indicator"></span></button></th>
+              <th data-sort="amount" aria-sort="none"><button class="sort-button" type="button">Valor <span class="sort-indicator"></span></button></th>
+              <th>Parcelamento</th>
+              <th>Recorrência</th>
+              <th data-sort="category" aria-sort="none"><button class="sort-button" type="button">Categoria efetiva <span class="sort-indicator"></span></button></th>
+              <th data-sort="source" aria-sort="none"><button class="sort-button" type="button">Origem <span class="sort-indicator"></span></button></th>
+              <th></th>
+            </tr></thead>
+            <tbody id="transaction-list"><tr><td colspan="8" class="loading">Carregando transações importadas…</td></tr></tbody>
+          </table>
+        </div>
+        <p id="transaction-count" class="table-footnote"></p>
+      </section>
+
+      <section class="observability" aria-labelledby="observability-title">
+        <div class="section-title">
+          <div><p class="eyebrow">Observabilidade local</p><h2 id="observability-title">Logs e conexões</h2></div>
+          <button id="refresh-diagnostics" class="secondary" type="button">Atualizar diagnóstico</button>
+        </div>
+        <p class="diagnostic-note">Somente estado técnico, latência e identificadores opacos. Dados financeiros e credenciais não entram nos logs.</p>
+        <div id="connection-list" class="connection-list" aria-live="polite"><p class="loading">Carregando conexões locais…</p></div>
+        <details class="log-panel"><summary>Eventos recentes <b id="log-count">0</b></summary><div id="log-list" class="log-list"><p class="loading">Carregando eventos…</p></div></details>
+      </section>
+    </main>
+
+    <dialog id="password-dialog"><form id="process-form"><button type="button" class="close">×</button><p class="eyebrow">Processamento local</p><h2>O PDF possui senha?</h2><p>Ela será usada apenas em memória e não será armazenada.</p><label class="field"><span>Senha <small>(opcional)</small></span><input id="pdf-password" type="password" maxlength="256" autocomplete="off"></label><button class="primary" type="submit">Criar nova versão</button></form></dialog>
+
+    <dialog id="category-dialog">
+      <form id="category-form">
+        <button type="button" class="close category-close">×</button>
+        <p class="eyebrow">Confirmação humana</p><h2>Categorizar gasto</h2>
+        <p id="category-description" class="dialog-description"></p>
+        <label class="field"><span>Nome do estabelecimento</span><input id="merchant-name" type="text" maxlength="120" autocomplete="off" required></label>
+        <label class="field"><span>Categoria</span><select id="category-select" required></select></label>
+        <div class="category-create">
+          <button id="show-category-create" class="text-action" type="button">+ Criar categoria</button>
+          <div id="category-create-panel" hidden>
+            <label class="field"><span>Nome da nova categoria</span><input id="new-category-name" type="text" maxlength="100" placeholder="Ex.: Posto de gasolina" autocomplete="off"></label>
+            <div class="inline-actions"><button id="create-category" class="secondary" type="button">Adicionar</button><button id="cancel-category-create" class="text-action" type="button">Cancelar</button></div>
+          </div>
+        </div>
+        <label class="field"><span>Unir com estabelecimento existente <small>(opcional)</small></span><select id="merchant-merge"><option value="">Não unir aliases</option></select></label>
+        <label class="field"><span>Recorrência</span><select id="recurrence-mode"><option value="none">Não recorrente</option><option value="unlimited">Recorrente sem prazo</option><option value="until">Recorrente com prazo</option></select></label>
+        <label id="recurrence-end-field" class="field" hidden><span>Último mês da recorrência</span><input id="recurrence-end-month" type="month"><small>O gasto será incluído até este mês, inclusive.</small></label>
+        <fieldset class="scope-options"><legend>Aplicar a</legend><label><input type="radio" name="category-scope" value="transaction" checked> Somente esta transação</label><label><input type="radio" name="category-scope" value="merchant"> Todas deste estabelecimento</label></fieldset>
+        <p class="dialog-tip">Somente confirmações humanas entram na futura base de treinamento.</p>
+        <button class="primary" type="submit">Confirmar categoria</button>
+      </form>
+    </dialog>
+
+    <button id="assistant-launcher" class="assistant-launcher" type="button" aria-label="Abrir assistente financeiro" aria-controls="assistant-panel" aria-expanded="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8h10M7 12h7m-9 8 2.2-3H18a3 3 0 0 0 3-3V6a3 3 0 0 0-3-3H6a3 3 0 0 0-3 3v8a3 3 0 0 0 3 3h1z"/></svg>
+      <span>Assistente</span>
+    </button>
+
+    <aside id="assistant-panel" class="assistant-panel" aria-label="Assistente financeiro" aria-hidden="true">
+      <header class="assistant-header">
+        <div class="assistant-identity">
+          <span class="assistant-mark" aria-hidden="true">FL</span>
+          <div><strong>Assistente financeiro</strong><small><i></i> dados locais e privados</small></div>
+        </div>
+        <button id="assistant-close" class="assistant-close" type="button" aria-label="Fechar assistente">×</button>
+      </header>
+
+      <div id="assistant-messages" class="assistant-messages" role="log" aria-live="polite" aria-relevant="additions">
+        <article class="assistant-message assistant-message-ai">
+          <span class="assistant-avatar" aria-hidden="true">FL</span>
+          <div><p>Olá! Posso consultar seus dados financeiros, comparar períodos e preparar alterações com sua confirmação.</p><time>Agora</time></div>
+        </article>
+        <div id="assistant-suggestions" class="assistant-suggestions" aria-label="Sugestões de perguntas">
+          <button type="button">Quanto gastei este mês?</button>
+          <button type="button">Compare os últimos dois meses</button>
+          <button type="button">Quais foram as maiores categorias?</button>
+        </div>
+      </div>
+
+      <div id="assistant-status" class="assistant-status" role="status" hidden><span></span><span></span><span></span><small>Analisando seus dados</small></div>
+
+      <form id="assistant-form" class="assistant-form">
+        <label for="assistant-input">Converse com seu assistente</label>
+        <div class="assistant-composer">
+          <textarea id="assistant-input" rows="1" maxlength="2000" placeholder="Pergunte sobre seus gastos…" required></textarea>
+          <button id="assistant-send" type="submit" aria-label="Enviar mensagem">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 14-7-4 14-3-5zm0 0 7 2"/></svg>
+          </button>
+        </div>
+        <small>A IA pode cometer erros. Alterações sempre exigem confirmação.</small>
+      </form>
+    </aside>
+
+    <div id="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>
